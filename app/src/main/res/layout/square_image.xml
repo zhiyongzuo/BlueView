@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.example.zuo81.blueview.view.DragView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <SeekBar
+        android:id="@+id/seekBar_width_drag_view"
+        android:background="#fff"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+    <SeekBar
+        android:id="@+id/seekBar_height_drag_view"
+        android:background="#fff"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <FrameLayout
+        android:background="#000"
+        android:layout_width="match_parent"
+        android:layout_height="10dp"/>
+
+    <FrameLayout
+        android:id="@+id/frame_layout_drag_view"
+        android:background="#fff"
+        android:layout_width="100dp"
+        android:layout_height="match_parent">
+        <com.example.zuo81.blueview.view.SquareImage
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+    </FrameLayout>
+</com.example.zuo81.blueview.view.DragView>

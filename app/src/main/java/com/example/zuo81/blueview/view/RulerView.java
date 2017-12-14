@@ -1,5 +1,8 @@
 package com.example.zuo81.blueview.view;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -24,14 +27,18 @@ import static android.view.View.MeasureSpec.UNSPECIFIED;
 public class RulerView extends View {
     private int width, height;
     private int rulerRight = 0;
+    private int minScale = 0;
     private int scaleGap = 50;
     private int rulerHeight = 250;
+    private int firstScale = 600;
     private int rulerCount = 10;
     private float currentX;
     private float downX, moveX, upX, lastMoveX;
     private Paint mBgPaint;
     private Paint mRulerPaint;
     private Paint mResultPaint;
+    private boolean isUp;
+    private ValueAnimator mValueAnimator;
 
     // if delete constructor below
     //Caused by: java.lang.NoSuchMethodException: <init> [class android.content.Context, interface android.util.AttributeSet]
@@ -43,57 +50,103 @@ public class RulerView extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        int heightMode = MeasureSpec.getMode(widthMeasureSpec);
         int widthSize = MeasureSpec.getSize(widthMeasureSpec);
         int heightSize = MeasureSpec.getSize(heightMeasureSpec);
-        switch(heightMode) {
-            case AT_MOST:
-                height = rulerHeight + 400;
-                break;
-            case EXACTLY:
-                height = heightSize + getPaddingTop() + getPaddingBottom();
-                break;
-            case UNSPECIFIED:
-                height = heightSize + getPaddingTop() + getPaddingBottom();
-                break;
-        }
-        width = 400 + getPaddingLeft() + getPaddingRight();
+        height = heightSize;
+        width = widthSize - getPaddingLeft() - getPaddingRight();
         setMeasuredDimension(width, height);
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         currentX = event.getX();
+        isUp = false;
         switch(event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 downX = event.getX();
                 break;
             case MotionEvent.ACTION_MOVE:
                 moveX = currentX - downX + lastMoveX;
-                Log.d("AAA", moveX + "moveX");
                 break;
             case MotionEvent.ACTION_UP:
                 lastMoveX = moveX;
                 upX = event.getX();
+                isUp = true;
                 break;
         }
         invalidate();
         return true;
     }
 
+    private float getMove(float scale) {
+        return width / 2 - rulerCount * scaleGap * (scale - minScale);
+    }
+
     private void drawRuler(Canvas canvas) {
         canvas.translate(0, height / 2);
+        if(firstScale != -1) {
+            moveX = scaleGap * rulerCount * firstScale;
+            lastMoveX = moveX;
+            if(mValueAnimator != null && !mValueAnimator.isRunning()) {
+                mValueAnimator = ValueAnimator.ofFloat(getMove(minScale), getMove(firstScale));
+                mValueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                    @Override
+                    public void onAnimationUpdate(ValueAnimator animation) {
+                        moveX = (Float)animation.getAnimatedValue();
+                        lastMoveX = moveX;
+                        invalidate();
+                    }
+                });
+                mValueAnimator.addListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        super.onAnimationEnd(animation);
+                        firstScale = -1;
+                    }
+                });
+                mValueAnimator.setDuration(300);
+                mValueAnimator.start();
+            }
+        }
         int num1;
         int num2;
-        num1 = (int)moveX / scaleGap;
+
+        num1 = -(int)moveX / scaleGap;
         num2 = (int)moveX % scaleGap;
-        canvas.save();//应该是防止坐标转换太多不知道到底在哪了
-        canvas.translate(-num2, 0);//not -num2 but num2  ...error
+
+        if(isUp) {
+            int minMove;
+            int positiveNum2 = Math.abs(num2);
+            minMove = positiveNum2 >= scaleGap / 2 ? -scaleGap + positiveNum2 : positiveNum2;
+            Log.d("MMM", minMove + " minMove");
+            if(mValueAnimator != null && !mValueAnimator.isRunning()) {
+                mValueAnimator = ValueAnimator.ofFloat(moveX, moveX + minMove);
+                mValueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                    @Override
+                    public void onAnimationUpdate(ValueAnimator animation) {
+                        Log.d("MMM", animation.getAnimatedValue() + " animatedValue");
+                        moveX = (float)animation.getAnimatedValue();
+                        lastMoveX = moveX;
+                        invalidate();
+                    }
+                });
+                mValueAnimator.setDuration(300);
+                mValueAnimator.start();
+                isUp = false;
+            }
+        }
+
+        num1 = -(int)moveX / scaleGap;
+        num2 = (int)moveX % scaleGap;
+
+        canvas.save();
+        canvas.translate(num2, 0);//not num2 but -num2  ...or error
         rulerRight = 0;
         while(rulerRight < width) {
+            Log.d("GG", moveX + " moveX");
             if(num1 % rulerCount == 0) {
                 canvas.drawLine(0, 0, 0, rulerHeight / 2 - 15, mRulerPaint);
-                canvas.drawText(num1 / rulerCount + 666 + "",  0, rulerHeight / 2 + 10, mRulerPaint);
+                canvas.drawText(num1 / rulerCount + "",  0, rulerHeight / 2 + 10, mRulerPaint);
             } else {
                 canvas.drawLine(0, 0, 0, rulerHeight / 2 -105, mRulerPaint);
             }
@@ -128,16 +181,17 @@ public class RulerView extends View {
 
         mResultPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mResultPaint.setColor(Color.RED);
-        mResultPaint.setStrokeWidth(15);
+        mResultPaint.setStrokeWidth(20);
         mResultPaint.setStyle(Paint.Style.FILL);
         mResultPaint.setStrokeCap(Paint.Cap.ROUND);
         mResultPaint.setTextSize(20);
+
+        mValueAnimator = new ValueAnimator();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        //why cannot be roundRect
         drawBg(canvas);
         drawRuler(canvas);
         drawResultText(canvas);
