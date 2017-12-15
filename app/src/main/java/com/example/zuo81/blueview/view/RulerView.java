@@ -16,9 +16,12 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
+import java.math.BigDecimal;
+
 import static android.view.View.MeasureSpec.AT_MOST;
 import static android.view.View.MeasureSpec.EXACTLY;
 import static android.view.View.MeasureSpec.UNSPECIFIED;
+import static java.math.BigDecimal.ROUND_HALF_UP;
 
 /**
  * Created by zuo81 on 2017/12/11.
@@ -38,7 +41,10 @@ public class RulerView extends View {
     private Paint mRulerPaint;
     private Paint mResultPaint;
     private boolean isUp;
+    private Rect numRect;
+    private Rect redNumRect;
     private ValueAnimator mValueAnimator;
+    private String resultText = String.valueOf(firstScale);
 
     // if delete constructor below
     //Caused by: java.lang.NoSuchMethodException: <init> [class android.content.Context, interface android.util.AttributeSet]
@@ -142,11 +148,13 @@ public class RulerView extends View {
         canvas.save();
         canvas.translate(num2, 0);//not num2 but -num2  ...or error
         rulerRight = 0;
+        resultText = String.valueOf(new BigDecimal((width / 2 - moveX) / (scaleGap * rulerCount)).setScale(1, ROUND_HALF_UP).floatValue());
         while(rulerRight < width) {
             Log.d("GG", moveX + " moveX");
             if(num1 % rulerCount == 0) {
                 canvas.drawLine(0, 0, 0, rulerHeight / 2 - 15, mRulerPaint);
-                canvas.drawText(num1 / rulerCount + "",  0, rulerHeight / 2 + 10, mRulerPaint);
+                mRulerPaint.getTextBounds(num1 / rulerCount + "", 0, (num1 / rulerCount + "").length(), numRect);
+                canvas.drawText(num1 / rulerCount + "",  0 - numRect.width() / 2, rulerHeight / 2 + 15, mRulerPaint);
             } else {
                 canvas.drawLine(0, 0, 0, rulerHeight / 2 -105, mRulerPaint);
             }
@@ -158,8 +166,14 @@ public class RulerView extends View {
         canvas.drawLine(width / 2, 0, width / 2, rulerHeight / 2 -15, mResultPaint);
     }
 
-    private void drawResultText(Canvas canvas) {
-
+    private void drawResultText(Canvas canvas, String resultText) {
+        canvas.save();
+        canvas.translate(0, 0);
+        canvas.translate(width / 2, height / 8);
+        //canvas.drawText((int)((-moveX / scaleGap - moveX % scaleGap) / rulerCount) + "", 0, 0, mResultPaint);
+        mResultPaint.getTextBounds(resultText, 0, resultText.length(), redNumRect);
+        canvas.drawText(resultText, -redNumRect.width() / 2, -height / 6, mResultPaint);
+        canvas.restore();
     }
 
     @TargetApi(21)
@@ -177,14 +191,17 @@ public class RulerView extends View {
         mRulerPaint.setColor(Color.BLACK);
         mRulerPaint.setStrokeWidth(10);
         mRulerPaint.setStrokeCap(Paint.Cap.ROUND);
-        mRulerPaint.setTextSize(20);
+        mRulerPaint.setTextSize(30);
 
         mResultPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mResultPaint.setColor(Color.RED);
         mResultPaint.setStrokeWidth(20);
         mResultPaint.setStyle(Paint.Style.FILL);
         mResultPaint.setStrokeCap(Paint.Cap.ROUND);
-        mResultPaint.setTextSize(20);
+        mResultPaint.setTextSize(40);
+
+        numRect = new Rect();
+        redNumRect = new Rect();
 
         mValueAnimator = new ValueAnimator();
     }
@@ -194,6 +211,6 @@ public class RulerView extends View {
         super.onDraw(canvas);
         drawBg(canvas);
         drawRuler(canvas);
-        drawResultText(canvas);
+        drawResultText(canvas, resultText);
     }
 }
